@@ -3,11 +3,12 @@ var RIGHT_KEY = 'right';
 var UP_KEY = 'up';
 var DOWN_KEY = 'down';
 // Enemies our player must avoid
-var Enemy = function() {
+var Enemy = function(assignedRow) {
     // Variables applied to each of our instances go here,
     // we've provided one for you to get started
-    this.x = 0;
-    this.y = 0;
+    this.speed = Math.random() * 100;
+    this.xLoc = 0;
+    this.row = assignedRow;
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
     this.sprite = 'images/enemy-bug.png';
@@ -19,20 +20,29 @@ Enemy.prototype.update = function(dt) {
     // You should multiply any movement by the dt parameter
     // which will ensure the game runs at the same speed for
     // all computers.
-    this.x += dt;
+    var newX = this.xLoc + dt * this.speed;
+    var limit = MAP_BLOCK_WIDTH * (NUMBER_COLS - 1);
+    this.xLoc = newX % limit;
+    if (newX >= limit) {
+        this.randomSpeed();
+    }
 };
+
+Enemy.prototype.randomSpeed = function() {
+    this.speed = Math.random() * 100;
+}
 
 // Draw the enemy on the screen, required method for game
 Enemy.prototype.render = function() {
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+    ctx.drawImage(Resources.get(this.sprite), this.xLoc, this.row * MAP_BLOCK_HEIGHT - MAP_CHARACTER_OFFSET);
 };
 
 // Now write your own player class
 // This class requires an update(), render() and
 // a handleInput() method.
-var Player = function(startCol, startRow) {
-    this.col = startCol;
-    this.row = startRow;
+var Player = function() {
+    this.col = 0;
+    this.row = 6;
     this.sprite = 'images/char-boy.png';
 };
 
@@ -41,7 +51,7 @@ Player.prototype.update = function() {
 }
 
 Player.prototype.render = function() {
-    ctx.drawImage(Resources.get(this.sprite), this.col * MAP_BLOCK_WIDTH, this.row * MAP_BLOCK_HEIGHT - 30);
+    ctx.drawImage(Resources.get(this.sprite), this.col * MAP_BLOCK_WIDTH, this.row * MAP_BLOCK_HEIGHT - MAP_CHARACTER_OFFSET);
 }
 
 Player.prototype.handleInput = function(pressedKeyCode) {
@@ -72,12 +82,10 @@ Player.prototype.handleInput = function(pressedKeyCode) {
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
 // Place the player object in a variable called player
-var allEnemies = (function(){
-    return [];
+var allEnemies = (function() {
+    return [new Enemy(2), new Enemy(3), new Enemy(4)];
 })();
-var player = (function(){
-    return new Player(0,0);
-})();
+var player = new Player();
 
 
 
@@ -90,6 +98,5 @@ document.addEventListener('keyup', function(e) {
         39: RIGHT_KEY,
         40: DOWN_KEY
     };
-
     player.handleInput(allowedKeys[e.keyCode]);
 });
