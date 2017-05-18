@@ -17,7 +17,6 @@ var NUMBER_COLS = 6;
 var NUMBER_ROWS = 7;
 var MAP_BLOCK_WIDTH = 101;
 var MAP_BLOCK_HEIGHT = 83;
-var MAP_CHARACTER_OFFSET = 30;
 
 var Engine = (function(global) {
     /* Predefine the variables we'll be using within this scope,
@@ -85,7 +84,7 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        // checkCollisions();
+        checkCollisions();
     }
 
     /* This is called by the update function and loops through all of the
@@ -99,8 +98,18 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
-        player.update();
+        player.update(dt);
     }
+
+    function checkCollisions(){
+        var isCollidedWithEnemy = false;
+        allEnemies.forEach(function(enemy) {
+            if(enemy.isCollided(player.getHitBox())){
+                player.damaged();
+            }
+        });
+    }
+
 
     /* This function initially draws the "game level", it will then call
      * the renderEntities function. Remember, this function is called every
