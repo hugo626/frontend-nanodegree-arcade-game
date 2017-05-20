@@ -13,10 +13,23 @@
  * the canvas' context (ctx) object globally available to make writing app.js
  * a little simpler to work with.
  */
-var MAP_COLS = 6;
+var MAP_COLS = 7;
 var MAP_ROWS = 6;
 var MAP_BLOCK_WIDTH = 101;
 var MAP_BLOCK_HEIGHT = 83;
+var GAME_INFOR_AREA_X = MAP_BLOCK_WIDTH * MAP_COLS;
+var GAME_INFOR_AREA_Y = 50;
+var GAME_INFOR_AREA_WIDTH = 300;
+var GAME_INFOR_AREA_HEIGHT = 535;
+var GAME_INFOR_LINE_HEIGHT = 25;
+var GAME_INFOR_LABEL_OFFSET_X = 190;
+var BLUE_COLOR = '#0078A7';
+var COLLECTABLE_ITEM_MAP = {
+    key: 'Key',
+    greenGem: 'Green Gem',
+    blueGem: 'Blue Gem',
+    orangeGem: 'Orange Gem'
+};
 
 var Engine = (function(global) {
     /* Predefine the variables we'll be using within this scope,
@@ -27,11 +40,13 @@ var Engine = (function(global) {
         win = global.window,
         canvas = doc.createElement('canvas'),
         ctx = canvas.getContext('2d'),
-        lastTime;
+        bestScore = 0,
+        timer, lastTime;
 
-    canvas.width = MAP_BLOCK_WIDTH * MAP_COLS;
+    canvas.width = MAP_BLOCK_WIDTH * MAP_COLS + GAME_INFOR_AREA_WIDTH;
     canvas.height = MAP_BLOCK_WIDTH * MAP_ROWS;
     doc.body.appendChild(canvas);
+    ctx.imageSmoothingEnabled = true;
 
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
@@ -98,22 +113,30 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
+        items.forEach(function(item) {
+            item.update(dt);
+        });
         player.update(dt);
-        key.update(dt);
     }
 
-    function checkCollisions(){
+    function checkCollisions() {
         var isCollidedWithEnemy = false;
         allEnemies.forEach(function(enemy) {
-            if(enemy.isCollided(player.getHitBox())){
-                player.damaged();
+            if (enemy.isCollided(player.getHitBox())) {
+                player.killed();
+                timer = 0;
             }
         });
 
-        if(key.isCollided(player.getHitBox())){
-            key.refresh();
-            player.damaged();
-        }
+        items.forEach(function(item) {
+            if (item.isCollided(player.getHitBox())) {
+                item.refresh();
+                player.collectItem(item);
+                if (item.name === 'Key') {
+                    player.resetLocation();
+                }
+            }
+        });
     }
 
 
@@ -124,6 +147,60 @@ var Engine = (function(global) {
      * they are just drawing the entire screen over and over.
      */
     function render() {
+        ctx.clearRect(GAME_INFOR_AREA_X, GAME_INFOR_AREA_Y, GAME_INFOR_AREA_WIDTH, GAME_INFOR_AREA_HEIGHT);
+        ctx.save();
+        // draw the game information board's border.
+        ctx.rect(GAME_INFOR_AREA_X, GAME_INFOR_AREA_Y, GAME_INFOR_AREA_WIDTH, GAME_INFOR_AREA_HEIGHT);
+        ctx.stroke();
+        drawText('Welcome !', 'center', '30px Calibri,Arial', BLUE_COLOR,
+            GAME_INFOR_AREA_WIDTH / 2 + GAME_INFOR_AREA_X,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 2);
+        drawSeperater(GAME_INFOR_AREA_X,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 3,
+            GAME_INFOR_AREA_X + GAME_INFOR_AREA_WIDTH,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 3);
+
+        var scoreTextFont = '24px Calibri,Arial',
+            lineHeightCount = 6;
+        for (var key in player.collectedItemCount) {
+            if (player.collectedItemCount.hasOwnProperty(key)) {
+                drawScore(COLLECTABLE_ITEM_MAP[key] + ' :  ', player.collectedItemCount[key],
+                    scoreTextFont, BLUE_COLOR,
+                    GAME_INFOR_AREA_X + GAME_INFOR_LABEL_OFFSET_X,
+                    GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
+                lineHeightCount += 2;
+            }
+        }
+
+        scoreTextFont = 'bold 24px Calibri,Arial';
+        var currentScore = player.getTotalScore();
+        drawScore('Total Score :  ', currentScore,
+            scoreTextFont, BLUE_COLOR,
+            GAME_INFOR_AREA_X + GAME_INFOR_LABEL_OFFSET_X,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
+
+        if (bestScore < currentScore) {
+            bestScore = currentScore;
+        }
+        lineHeightCount += 2;
+        drawScore();
+        drawScore('Best Score :  ', bestScore,
+            scoreTextFont, 'gold',
+            GAME_INFOR_AREA_X + GAME_INFOR_LABEL_OFFSET_X,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
+
+        lineHeightCount += 2;
+        drawSeperater(GAME_INFOR_AREA_X,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount,
+            GAME_INFOR_AREA_X + GAME_INFOR_AREA_WIDTH,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
+
+        lineHeightCount += 2;
+        drawText('Timer : ' + timer, 'center', '30px Calibri,Arial', BLUE_COLOR,
+            GAME_INFOR_AREA_WIDTH / 2 + GAME_INFOR_AREA_X,
+            GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
+
+
         /* This array holds the relative URL to the image used
          * for that particular row of the game level.
          */
@@ -165,12 +242,15 @@ var Engine = (function(global) {
         /* Loop through all of the objects within the allEnemies array and call
          * the render function you have defined.
          */
+        items.forEach(function(item) {
+            item.render();
+        });
         allEnemies.forEach(function(enemy) {
             enemy.render();
         });
 
         player.render();
-        key.render();
+
     }
 
     /* This function does nothing but it could have been a good place to
@@ -178,7 +258,10 @@ var Engine = (function(global) {
      * those sorts of things. It's only called once by the init() method.
      */
     function reset() {
-        // noop
+        timer = 0;
+        setInterval(function() {
+            timer++;
+        }, 1000);
     }
 
     /* Go ahead and load all of the images we know we're going to need to
@@ -196,6 +279,9 @@ var Engine = (function(global) {
         'images/char-pink-girl.png',
         'images/char-princess-girl.png',
         'images/Key.png',
+        'images/Gem Blue.png',
+        'images/Gem Green.png',
+        'images/Gem Orange.png',
     ]);
     Resources.onReady(init);
 
@@ -205,4 +291,34 @@ var Engine = (function(global) {
      */
     global.ctx = ctx;
     global.canvas = canvas;
+
+    function drawSeperater(startX, startY, endX, endY, color) {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawText(textToDraw, textAlign, fontFamily, color, startX, startY) {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.textAlign = textAlign;
+        ctx.font = fontFamily;
+        ctx.fillText(textToDraw, startX, startY);
+
+        ctx.restore();
+    }
+
+    function drawScore(textToDraw, score, fontFamily, color, startX, startY) {
+        var scoreLabelTextAlign = 'right',
+            scoreTextAlign = 'left';
+        drawText(textToDraw, scoreLabelTextAlign, fontFamily, color,
+            startX, startY);
+        drawText(score, scoreTextAlign, fontFamily, color,
+            startX, startY);
+    }
+
 })(this);
