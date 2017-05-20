@@ -24,6 +24,9 @@ var GAME_INFOR_AREA_HEIGHT = 535;
 var GAME_INFOR_LINE_HEIGHT = 25;
 var GAME_INFOR_LABEL_OFFSET_X = 190;
 var BLUE_COLOR = '#0078A7';
+var TEXT_ALIGN_RIGHT = 'right';
+var TEXT_ALIGN_LEFT = 'left';
+var TEXT_ALIGN_CENTER = 'center';
 var COLLECTABLE_ITEM_MAP = {
     key: 'Key',
     greenGem: 'Green Gem',
@@ -42,7 +45,7 @@ var Engine = (function(global) {
         ctx = canvas.getContext('2d'),
         bestScore = 0,
         timer, lastTime;
-
+    global.isGameOver = false;
     canvas.width = MAP_BLOCK_WIDTH * MAP_COLS + GAME_INFOR_AREA_WIDTH;
     canvas.height = MAP_BLOCK_WIDTH * MAP_ROWS;
     doc.body.appendChild(canvas);
@@ -66,12 +69,15 @@ var Engine = (function(global) {
          */
         update(dt);
         render();
-
         /* Set our lastTime variable which is used to determine the time delta
          * for the next time this function is called.
          */
         lastTime = now;
-
+        if (global.isGameOver) {
+            reset();
+            drawGameOverOverlay();
+            // isGameOver = false;
+        }
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
@@ -85,6 +91,9 @@ var Engine = (function(global) {
     function init() {
         reset();
         lastTime = Date.now();
+        setInterval(function() {
+            if(!isGameOver) timer++;
+        }, 1000);
         main();
     }
 
@@ -122,9 +131,10 @@ var Engine = (function(global) {
     function checkCollisions() {
         var isCollidedWithEnemy = false;
         allEnemies.forEach(function(enemy) {
+
             if (enemy.isCollided(player.getHitBox())) {
                 player.killed();
-                timer = 0;
+                global.isGameOver = true;
             }
         });
 
@@ -152,7 +162,7 @@ var Engine = (function(global) {
         // draw the game information board's border.
         ctx.rect(GAME_INFOR_AREA_X, GAME_INFOR_AREA_Y, GAME_INFOR_AREA_WIDTH, GAME_INFOR_AREA_HEIGHT);
         ctx.stroke();
-        drawText('Welcome !', 'center', '30px Calibri,Arial', BLUE_COLOR,
+        drawText('Welcome !', TEXT_ALIGN_CENTER, '30px Calibri,Arial', BLUE_COLOR,
             GAME_INFOR_AREA_WIDTH / 2 + GAME_INFOR_AREA_X,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 2);
         drawSeperater(GAME_INFOR_AREA_X,
@@ -196,7 +206,7 @@ var Engine = (function(global) {
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
 
         lineHeightCount += 2;
-        drawText('Timer : ' + timer, 'center', '30px Calibri,Arial', BLUE_COLOR,
+        drawText('Timer : ' + timer, TEXT_ALIGN_CENTER, '30px Calibri,Arial', BLUE_COLOR,
             GAME_INFOR_AREA_WIDTH / 2 + GAME_INFOR_AREA_X,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
 
@@ -250,7 +260,6 @@ var Engine = (function(global) {
         });
 
         player.render();
-
     }
 
     /* This function does nothing but it could have been a good place to
@@ -259,9 +268,7 @@ var Engine = (function(global) {
      */
     function reset() {
         timer = 0;
-        setInterval(function() {
-            timer++;
-        }, 1000);
+        drawGameOverOverlay();
     }
 
     /* Go ahead and load all of the images we know we're going to need to
@@ -313,12 +320,22 @@ var Engine = (function(global) {
     }
 
     function drawScore(textToDraw, score, fontFamily, color, startX, startY) {
-        var scoreLabelTextAlign = 'right',
-            scoreTextAlign = 'left';
-        drawText(textToDraw, scoreLabelTextAlign, fontFamily, color,
+        drawText(textToDraw, TEXT_ALIGN_RIGHT, fontFamily, color,
             startX, startY);
-        drawText(score, scoreTextAlign, fontFamily, color,
+        drawText(score, TEXT_ALIGN_LEFT, fontFamily, color,
             startX, startY);
+    }
+
+    function drawGameOverOverlay() {
+        ctx.save()
+        ctx.fillStyle = "rgba(0, 0, 0,0.5)";
+        ctx.rect(0, GAME_INFOR_AREA_Y, MAP_BLOCK_WIDTH * MAP_COLS, GAME_INFOR_AREA_HEIGHT);
+        ctx.fill();
+        drawText("Game Over", TEXT_ALIGN_CENTER, 'bold 40px Calibri,Arial', 'red',
+            GAME_INFOR_AREA_X / 2, GAME_INFOR_AREA_HEIGHT / 2);
+        drawText("Press SPACE key to continue...", TEXT_ALIGN_CENTER, '36px Calibri,Arial', 'red',
+            GAME_INFOR_AREA_X / 2, GAME_INFOR_AREA_HEIGHT / 2 + GAME_INFOR_LINE_HEIGHT*2);
+        ctx.restore();
     }
 
 })(this);

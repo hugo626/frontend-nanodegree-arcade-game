@@ -248,7 +248,10 @@ Player.prototype.isMoving = function() {
 Player.prototype.handleInput = function(pressedKeyCode) {
     // check if the character still in moving state. if character is still moving, then do not need
     // to respond to user's new key pressed event.
-    if (this.isMoving()) {
+    if(isGameOver && pressedKeyCode === SPACE_KEY){
+       isGameOver = false;
+    }
+    if (this.isMoving()||isGameOver) {
         return;
     }
     this.previousCol = this.targetCol;
