@@ -2,16 +2,41 @@ var LEFT_KEY = 'left';
 var RIGHT_KEY = 'right';
 var UP_KEY = 'up';
 var DOWN_KEY = 'down';
+// this is the offset which will be substract from y axis , to thtat the character
+// could be drawn in the center of the map block.
 var MAP_CHARACTER_OFFSET = 30;
+//Map block's drawing size.
 var MAP_BLOCK_WIDTH = 101;
 var MAP_BLOCK_HEIGHT = 83;
+var MAP_COLS = 6;
+var MAP_ROWS = 6;
 
+var ANIMATION_INTERVAL = 2;
+var BOUNCING_HEIGHT = 20;
+
+/**
+ * @description This is a super class to describe any object in game which could be collided with
+ *              other object. Such as: enemies, player or maybe items.
+ * @param {number} initialX the initial x location for this object to be drawn on canvas.
+ * @param {number} initialY the initial x location for this object to be drawn on canvas.
+ * @param {number} initialHitBox this defined the hit box for this object, it should have offset X and Y
+ *                               location which will describe the left upper corner of the hit box,
+ *                               which should be relative to the image-self. It should have width and
+ *                               height defined to describe the size of the hit box.
+ */
 var CollidableObject = function(initialX, initialY, initialHitBox) {
     this.currentX = initialX;
     this.currentY = initialY;
     this.hitBox = initialHitBox;
 };
 
+/**
+ * @description this function will return a hit box definition, the major different between the retun one
+ *              with the hitbox in {@link CollidableObject} is: the return hitbox describee the hitbox in
+ *              absoulate location in whole canvas but not relativly in its image. In other words, the x
+ *              and y location in the returned hitbox is describing the location of hit box in whole canvas.
+ * @return a object which is used to describe the hitbox of this object in whole canvas.
+ */
 CollidableObject.prototype.getHitBox = function() {
     return {
         x: this.currentX + this.hitBox.offsetX,
@@ -21,26 +46,44 @@ CollidableObject.prototype.getHitBox = function() {
     };
 };
 
+/**
+ * @description This function will take any absoulate hitbox of a {@link CollidableObject}, and the calculate
+ *              whether it is intersected with own absoulate hitbox. If they are intersected, then return true,
+ *              otherwise, return false.
+ * @param {object} targetHitbox an absoulate hitbox of a {@link CollidableObject}.
+ * @return {boolean} true if the given hitbox is intersected with own absoulte hitbox, otherwise false.
+ */
 CollidableObject.prototype.isCollided = function(targetHitbox) {
-    return !(targetHitbox.x > (this.getHitBox().x + this.getHitBox().width) ||
-        (targetHitbox.x + targetHitbox.width) < this.getHitBox().x ||
-        targetHitbox.y > (this.getHitBox().y + this.getHitBox().height) ||
-        (targetHitbox.y + targetHitbox.height) < this.getHitBox().y);
+    var ownHitbox = this.getHitBox();
+    return !(targetHitbox.x > (ownHitbox.x + ownHitbox.width) ||
+        (targetHitbox.x + targetHitbox.width) < ownHitbox.x ||
+        targetHitbox.y > (ownHitbox.y + ownHitbox.height) ||
+        (targetHitbox.y + targetHitbox.height) < ownHitbox.y);
 };
 
-// Enemies our player must avoid
+/**
+ * @description Define a Enemy class, whcih will have the x and y location of this enemy, image to draw.
+ *              And other methods to update its location. It will inherited from {@link CollidableObject}.
+ * @param {number} assignedRow the row that allow this enemy to be occupied.
+ */
 var Enemy = function(assignedRow) {
-    // Variables applied to each of our instances go here,
-    // we've provided one for you to get started
+    //initialise the speed variable for this enemy.
     this.speed = 0;
+    // the row that this enemy occupied.
     this.row = assignedRow;
+    this.minSpeed = 30;
+    this.randomUpper = 80;
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
     this.sprite = 'images/enemy-bug.png';
     this.randomSpeed();
 
+    //Currently, all enmey should be move from left to right side, so the intial X should be 0.
     var initialX = 0;
-    var initialY = assignedRow * MAP_BLOCK_HEIGHT - MAP_CHARACTER_OFFSET;
+    // depend on the assigned row number, calculat the initial y location for this enemy.
+    var initialY = _convertRowToY(assignedRow);
+    // the offset X and Y location which will describe the left upper corner of the hit box,
+    // which should be relative to the image-self.
     var initialHitBox = {
         offsetX: 7.5,
         offsetY: 80,
@@ -53,40 +96,72 @@ var Enemy = function(assignedRow) {
 Enemy.prototype = Object.create(CollidableObject.prototype);
 Enemy.prototype.constructor = Enemy;
 
-// Update the enemy's position, required method for game
+//
 // Parameter: dt, a time delta between ticks
+/**
+ * @description Update the enemy's position, required method for game, {@link Engine} will
+ *              call this method to update the object's location.
+ * @param {number} dt is the systemn time differece between two times of update method call.
+ * @return nothing.
+ */
 Enemy.prototype.update = function(dt) {
-    // You should multiply any movement by the dt parameter
-    // which will ensure the game runs at the same speed for
-    // all computers.
+    // since this is enemy, we are not gong to let them cross the row, so we only update
+    // the x location to move from left side to right.
     var newX = this.currentX + dt * this.speed;
-    var limit = MAP_BLOCK_WIDTH * (NUMBER_COLS - 1);
+    // defiend the right side boundary for this enemy.
+    var limit = MAP_BLOCK_WIDTH * (MAP_COLS - 1);
+    // use right side boundary to reset the x location of enemy object. So it will return
+    // back to left side, onece it reach to right side.
     this.currentX = newX % limit;
     if (newX >= limit) {
+        // in order to make the game unperdicatable, we will regenerate a speed to each
+        // enemy object, when they are going to move back to left side.
         this.randomSpeed();
     }
 };
 
+/**
+ * @description this method will simply regenerate the speed attribe for its own enemy object.
+ *              the speed range is [50,130).
+ * @return nothing.
+ */
 Enemy.prototype.randomSpeed = function() {
-    this.speed = (Math.random() * 50) + 50;
+    this.speed = (Math.random() * this.randomUpper) + this.minSpeed;
 };
 
-// Draw the enemy on the screen, required method for game
+/**
+ * @description a render method which {@link engine.js} will be called to draw the
+ *              object in canvas based on object's currentX and currentY;
+ * @return nothing.
+ */
 Enemy.prototype.render = function() {
     ctx.drawImage(Resources.get(this.sprite), this.currentX, this.currentY);
 };
 
-// Now write your own player class
-// This class requires an update(), render() and
-// a handleInput() method.
-var Player = function() {
-    this.speed = 200;
-    this.targetCol = 0;
-    this.targetRow = 6;
+/**
+ * @description Define a function class for charcter, it will inherited from {@link CollidableObject}.
+ * @param {number} initialCol, the initial col of this character.
+ * @param {number} initialRow, the initial row of this character.
+ */
+var Player = function(initialCol, initialRow) {
+    // the moving speed of an character.
+    this.speed = 250;
+    // record the intial col and row for reset the player purpose.
+    this.initialCol = initialCol;
+    this.initialRow = initialRow;
+    // where the charcter decide to be moved to. As we designed, charcter should only move in grid, so
+    // we need the target col and row to indicate where are the charcter now, and where it is going to
+    // be moved.
+    this.targetCol = initialCol;
+    this.targetRow = initialRow;
+    this.previousCol = initialCol;
+    this.previousRow = initialRow;
     this.sprite = 'images/char-boy.png';
 
-    var initialX = this.calcTargetX();
-    var initialY = this.calcTargetY();
+    // we need to calculate the accurate x and y location based one its col and row.
+    // To initialise the currentX and Y.
+    var initialX = _convertColToX(this.initialCol);
+    var initialY = _convertRowToY(this.initialRow);
     var initialHitBox = {
         offsetX: 22.5,
         offsetY: 90,
@@ -99,65 +174,76 @@ var Player = function() {
 Player.prototype = Object.create(CollidableObject.prototype);
 Player.prototype.constructor = Player;
 
-Player.prototype.calcTargetX = function() {
-    return this.targetCol * MAP_BLOCK_WIDTH;
-};
-
-Player.prototype.calcTargetY = function() {
-    return this.targetRow * MAP_BLOCK_HEIGHT - MAP_CHARACTER_OFFSET;
-};
-
+/**
+ * @description this method will make sure the character is moving along to the direction that
+ *              user would like to move to.
+ * @param {number} dt is the system time difference between two times of update method called.
+ * @return nothing.
+ */
 Player.prototype.update = function(dt) {
-    var _moveToTargetLoc = function(currentLoc, targetLoc, speed) {
-        var movement = (dt * speed);
-        if (Math.abs(targetLoc - currentLoc) >= movement) {
-            if (targetLoc > currentLoc) {
-                return currentLoc + movement;
-            } else {
-                return currentLoc - movement;
-            }
-        } else {
-            return targetLoc;
-        }
-    };
+    // first convert the target col and row into correspond x and y location.
+    var targetX = _convertColToX(this.targetCol);
+    var targetY = _convertRowToY(this.targetRow);
+    // update the current x and y to target x and y location with specific speed and time difference.
+    if (this.previousCol !== this.targetCol) {
+        this.currentX = _moveToTargetLoc(this.currentX, targetX, this.speed, dt);
 
-    var targetX = this.calcTargetX();
-    var targetY = this.calcTargetY();
-    this.currentX = _moveToTargetLoc(this.currentX, targetX, this.speed);
-    this.currentY = _moveToTargetLoc(this.currentY, targetY, this.speed);
+        var leftDistance = _calculateDistance(this.currentX, targetX);
+        var totalDistance = _calculateDistance(_convertColToX(this.previousCol), targetX);
+        this.currentY = _calculateBouncingCoord((leftDistance / totalDistance), _convertRowToY(this.previousRow));
+    }
+    if (this.previousRow !== this.targetRow) {
+        this.currentY = _moveToTargetLoc(this.currentY, targetY, this.speed, dt);
+    }
 };
 
+/**
+ * @description a render method which {@link engine.js} will be called to draw the
+ *              object in canvas based on object's currentX and currentY;
+ * @return nothing.
+ */
 Player.prototype.render = function() {
     ctx.drawImage(Resources.get(this.sprite), this.currentX, this.currentY);
 };
 
+/**
+ * @description a method is used to detect whether the object is still moveing or, it just reach
+ *              its destination.
+ * @return {boolean} false if both current x and y are equal with target x and y, return true otherwise.
+ */
 Player.prototype.isMoving = function() {
-    return this.currentX !== this.calcTargetX() || this.currentY !== this.calcTargetY();
+    return this.currentX !== _convertColToX(this.targetCol) || this.currentY !== _convertRowToY(this.targetRow);
 };
 
+/**
+ * @description this method will handle user's key pressed input, and then update character's target
+ *              colum and row, so that {@link engine} will call update method to make character move
+ *              to target colum and row.
+ * @param {string} pressedKeyCode is the human readable string to describe which key user pressed.
+ * @return nothing.
+ */
 Player.prototype.handleInput = function(pressedKeyCode) {
-    var _calcLowerBoundary = function(colOrRow, lowerColLimit) {
-        return colOrRow > lowerColLimit ? colOrRow - 1 : colOrRow;
-    };
-    var _calcUpperBoundary = function(colOrRow, upperColLimit) {
-        return colOrRow < upperColLimit - 1 ? colOrRow + 1 : colOrRow;
-    };
-
+    // check if the character still in moving state. if character is still moving, then do not need
+    // to respond to user's new key pressed event.
     if (this.isMoving()) {
         return;
     }
+    this.previousCol = this.targetCol;
+    this.previousRow = this.targetRow;
     switch (pressedKeyCode) {
         case LEFT_KEY:
-            this.targetCol = _calcLowerBoundary(this.targetCol, 0);
+            this.targetCol = _moveToLowerBoundary(this.targetCol, 0);
             break;
         case UP_KEY:
-            this.targetRow = _calcLowerBoundary(this.targetRow, 1);
+            // limite the up boundary to row 1, is because the row 0 is water, and we do expect
+            // character can be moved to that row.
+            this.targetRow = _moveToLowerBoundary(this.targetRow, 1);
             break;
         case RIGHT_KEY:
-            this.targetCol = _calcUpperBoundary(this.targetCol, NUMBER_COLS);
+            this.targetCol = _moveUpperBoundary(this.targetCol, MAP_COLS);
             break;
         case DOWN_KEY:
-            this.targetRow = _calcUpperBoundary(this.targetRow, NUMBER_ROWS);
+            this.targetRow = _moveUpperBoundary(this.targetRow, MAP_ROWS);
             break;
         default:
             // expect the
@@ -165,21 +251,163 @@ Player.prototype.handleInput = function(pressedKeyCode) {
     }
 };
 
+/**
+ * @description this method will be called when player's character is detected to be collided
+ *              with enemy. Currently, we will reset character back to initial location.
+ * @return nothing
+ */
 Player.prototype.damaged = function() {
-    this.targetCol = 0;
-    this.targetRow = 6;
-    this.currentX = this.calcTargetX();
-    this.currentY = this.calcTargetY();
+    //reset the target col and row to initial col and row.
+    this.targetCol = this.initialCol;
+    this.targetRow = this.initialRow;
+    //reset the current x and y location, so this character will be drawn back to initial location.
+    this.currentX = _convertColToX(this.targetCol);
+    this.currentY = _convertRowToY(this.targetRow);
+
+    this.previousCol = this.targetCol;
+    this.previousRow = this.targetRow;
 };
+
+/**
+ * @description Define a function class for items, it will inherited from {@link CollidableObject}.
+ * @param {number} initialCol initial colum of this item.
+ * @param {number} initialRow initial row of this item.
+ * @param {string} imgURI a path to a image to be drawn for this item.
+ */
+var Item = function(initialCol, initialRow, imgURI) {
+    this.sprite = imgURI;
+    this.animationCycleTime = 0;
+    // we need to calculate the accurate x and y location based one its col and row.
+    // To initialise the currentX and Y.
+    this.initialX = _convertColToX(initialCol);
+    this.initialY = _convertRowToY(initialRow);
+    var initialHitBox = {
+        offsetX: 25,
+        offsetY: 90,
+        width: 50,
+        height: 50
+    };
+    CollidableObject.call(this, this.initialX, this.initialY, initialHitBox);
+};
+
+Item.prototype = Object.create(CollidableObject.prototype);
+Item.prototype.constructor = Item;
+
+/**
+ * @description a render method which {@link engine.js} will be called to draw the
+ *              object in canvas based on object's currentX and currentY;
+ * @return nothing.
+ */
+Item.prototype.render = function() {
+    ctx.drawImage(Resources.get(this.sprite), this.currentX, this.currentY);
+};
+
+/**
+ * @description this method will make sure the character is moving along to the direction that
+ *              user would like to move to.
+ * @param {number} dt is the system time difference between two times of update method called.
+ * @return nothing.
+ */
+Item.prototype.update = function(dt) {
+    this.animationCycleTime = _calculateAnimationCycleTime(dt, this.animationCycleTime);
+    var ratio = this.animationCycleTime / ANIMATION_INTERVAL;
+    this.currentY = _calculateBouncingCoord(ratio, this.initialY);
+};
+
+Item.prototype.refresh = function () {
+    var newCol = Math.floor(Math.random()*MAP_COLS);
+    this.currentX = _convertColToX(newCol);
+};
+
+/**
+ * @description this method simply, calculate the target x for charcter based on
+ *               its target colum number.
+ * @return {number} the correspond X location based on the target colum.
+ */
+var _convertColToX = function(col) {
+    return col * MAP_BLOCK_WIDTH;
+};
+
+/**
+ * @description this method simply, calculate the target y for charcter based on
+ *              its target row number. Remeber, we also need to substract the
+ *              {@linkcode MAP_CHARACTER_OFFSET} to make sure the character to be
+ *              drawn in the center of a block.
+ * @return {number} the correspond Y location based on the target row.
+ */
+var _convertRowToY = function(row) {
+    return row * MAP_BLOCK_HEIGHT - MAP_CHARACTER_OFFSET;
+};
+
+/**
+ * @description thie should be private method to be called in {@link Player} class, so it will move the
+ *              current x or y of {@link Player} towards to target x or y location. Where target x and y
+ *              location should be converted from target col and row.
+ * @param {number} currentLoc current x or y location which is going to be move towards to target x or y.
+ * @param {number} targetLoc the target x or y location which user would like this character to move to.
+ *                           it should be converted from target col or row, and should be discard when updated finished.
+ * @param {number} speed the moving speed of the character, which will be used to move the character in canvas.
+ * @param {number} dt is the system time difference between two times of update method called.
+ */
+var _moveToTargetLoc = function(currentLoc, targetLoc, speed, dt) {
+    var movement = (dt * speed);
+    if (Math.abs(targetLoc - currentLoc) >= movement) {
+        if (targetLoc > currentLoc) {
+            return currentLoc + movement;
+        } else {
+            return currentLoc - movement;
+        }
+    } else {
+        return targetLoc;
+    }
+};
+
+var _calculateDistance = function(start, end) {
+    return Math.abs(start - end);
+};
+
+/**
+ * @description This method will be used to act when user want to move character to top or left side
+ *              of canvas. If the passed in number of col or row is at least 1 unit greater than limit,
+ *              then substract 1 unit from the colum or row. and return back. Otherwise return the same.
+ * @param {number} colOrRow the current col or row of grid block that character is staied in.
+ * @param {number} lowerLimit the allowed moving colum or row number for this character.
+ * @return {number} new colum or row number after consider user's input.
+ */
+var _moveToLowerBoundary = function(colOrRow, lowerLimit) {
+    return colOrRow > lowerLimit ? colOrRow - 1 : colOrRow;
+};
+
+/**
+ * @description This method will be used to act when user want to move character to right or bottom side
+ *              of canvas. If the passed in number of col or row is at least 1 unit smaller than limit,
+ *              then add 1 unit from the colum or row. and return back. Otherwise return the same.
+ * @param {number} colOrRow the current col or row of grid block that character is staied in.
+ * @param {number} lowerLimit the allowed moving colum or row number for this character.
+ * @return {number} new colum or row number after consider user's input.
+ */
+var _moveUpperBoundary = function(colOrRow, upperColLimit) {
+    return colOrRow < upperColLimit - 1 ? colOrRow + 1 : colOrRow;
+};
+
+var _calculateBouncingCoord = function(ratio, xOrY) {
+    return xOrY - Math.sin(ratio * Math.PI) * BOUNCING_HEIGHT;
+};
+
+var _calculateAnimationCycleTime = function(dt, animationCycleTime) {
+    return (animationCycleTime = (animationCycleTime + dt) % ANIMATION_INTERVAL);
+};
+
 
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
 // Place the player object in a variable called player
 var allEnemies = (function() {
-    return [new Enemy(2), new Enemy(3), new Enemy(4)];
+    return [new Enemy(2), new Enemy(3), new Enemy(4), new Enemy(2), new Enemy(3), new Enemy(4)];
 })();
-var player = new Player();
+var player = new Player(Math.floor(Math.random() * MAP_ROWS), MAP_ROWS - 1);
 
+var key = new Item(0, 1, 'images/Key.png');
 
 
 // This listens for key presses and sends the keys to your

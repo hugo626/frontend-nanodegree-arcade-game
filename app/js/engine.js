@@ -13,8 +13,8 @@
  * the canvas' context (ctx) object globally available to make writing app.js
  * a little simpler to work with.
  */
-var NUMBER_COLS = 6;
-var NUMBER_ROWS = 7;
+var MAP_COLS = 6;
+var MAP_ROWS = 6;
 var MAP_BLOCK_WIDTH = 101;
 var MAP_BLOCK_HEIGHT = 83;
 
@@ -29,8 +29,8 @@ var Engine = (function(global) {
         ctx = canvas.getContext('2d'),
         lastTime;
 
-    canvas.width = MAP_BLOCK_WIDTH * NUMBER_COLS;
-    canvas.height = MAP_BLOCK_WIDTH * NUMBER_ROWS;
+    canvas.width = MAP_BLOCK_WIDTH * MAP_COLS;
+    canvas.height = MAP_BLOCK_WIDTH * MAP_ROWS;
     doc.body.appendChild(canvas);
 
     /* This function serves as the kickoff point for the game loop itself
@@ -99,6 +99,7 @@ var Engine = (function(global) {
             enemy.update(dt);
         });
         player.update(dt);
+        key.update(dt);
     }
 
     function checkCollisions(){
@@ -108,6 +109,11 @@ var Engine = (function(global) {
                 player.damaged();
             }
         });
+
+        if(key.isCollided(player.getHitBox())){
+            key.refresh();
+            player.damaged();
+        }
     }
 
 
@@ -128,7 +134,6 @@ var Engine = (function(global) {
                 'images/stone-block.png', // Row 2 of 3 of stone
                 'images/stone-block.png', // Row 3 of 3 of stone
                 'images/grass-block.png', // Row 1 of 2 of grass
-                'images/grass-block.png' // Row 2 of 2 of grass
             ],
             row, col;
 
@@ -136,8 +141,8 @@ var Engine = (function(global) {
          * and, using the rowImages array, draw the correct image for that
          * portion of the "grid"
          */
-        for (row = 0; row < NUMBER_ROWS; row++) {
-            for (col = 0; col < NUMBER_COLS; col++) {
+        for (row = 0; row < MAP_ROWS; row++) {
+            for (col = 0; col < MAP_COLS; col++) {
                 /* The drawImage function of the canvas' context element
                  * requires 3 parameters: the image to draw, the x coordinate
                  * to start drawing and the y coordinate to start drawing.
@@ -165,6 +170,7 @@ var Engine = (function(global) {
         });
 
         player.render();
+        key.render();
     }
 
     /* This function does nothing but it could have been a good place to
@@ -189,6 +195,7 @@ var Engine = (function(global) {
         'images/char-horn-girl.png',
         'images/char-pink-girl.png',
         'images/char-princess-girl.png',
+        'images/Key.png',
     ]);
     Resources.onReady(init);
 
