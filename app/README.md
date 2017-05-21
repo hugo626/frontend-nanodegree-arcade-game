@@ -1,4 +1,4 @@
-#frontend-nanodegree-arcade-game
+# Frontend Nanodegree Arcade Game
 ===============================
 
 This is one of the project which comes from [Udacity](https://udacity.com/) [Front End Nanodegree](https://www.udacity.com/course/--nd001-cn-advanced)
