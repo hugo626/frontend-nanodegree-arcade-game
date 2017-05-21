@@ -5,10 +5,15 @@ This is one of the project which comes from [Udacity](https://udacity.com/) [Fro
 
 ## 1. How to Run
 --------------
+To run the play this game, please find out the ```index.html``` in ```app``` folder.
+Open ```index.html``` in an latest version browser, such as Firefox, Chrome. You should be able to see the gameboard to be drawn.
+
 ## 2. How to Play
 --------------
 ## 3. License
 --------------
+This Arcade Game is Copyright (c) 2017 Yuguo LI. It is free software, and may be redistributed under the terms specified in the [LICENSE](LICENSE) file.
+
 ## 4. Things could be better
 -------------------------
 ## 5. Course Requriments
