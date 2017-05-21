@@ -157,19 +157,24 @@ var Engine = (function(global) {
      * they are just drawing the entire screen over and over.
      */
     function render() {
+        // clear the rectanle from the canvas first for next around painting.
         ctx.clearRect(GAME_INFOR_AREA_X, GAME_INFOR_AREA_Y, GAME_INFOR_AREA_WIDTH, GAME_INFOR_AREA_HEIGHT);
         ctx.save();
         // draw the game information board's border.
         ctx.rect(GAME_INFOR_AREA_X, GAME_INFOR_AREA_Y, GAME_INFOR_AREA_WIDTH, GAME_INFOR_AREA_HEIGHT);
         ctx.stroke();
+        // draw the Welcome message on top of information board.
         drawText('Welcome !', TEXT_ALIGN_CENTER, '30px Calibri,Arial', BLUE_COLOR,
             GAME_INFOR_AREA_WIDTH / 2 + GAME_INFOR_AREA_X,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 2);
+
+        // draw the line seperater
         drawSeperater(GAME_INFOR_AREA_X,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 3,
             GAME_INFOR_AREA_X + GAME_INFOR_AREA_WIDTH,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * 3);
 
+        // draw the collected items information text to show the current status.
         var scoreTextFont = '24px Calibri,Arial',
             lineHeightCount = 6;
         for (var key in player.collectedItemCount) {
@@ -182,6 +187,7 @@ var Engine = (function(global) {
             }
         }
 
+        // draw the total score of this player.
         scoreTextFont = 'bold 24px Calibri,Arial';
         var currentScore = player.getTotalScore();
         drawScore('Total Score :  ', currentScore,
@@ -192,19 +198,21 @@ var Engine = (function(global) {
         if (bestScore < currentScore) {
             bestScore = currentScore;
         }
+        // draw the best score of this game session.
         lineHeightCount += 2;
-        drawScore();
         drawScore('Best Score :  ', bestScore,
             scoreTextFont, 'gold',
             GAME_INFOR_AREA_X + GAME_INFOR_LABEL_OFFSET_X,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
 
+        //draw the line seperater
         lineHeightCount += 2;
         drawSeperater(GAME_INFOR_AREA_X,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount,
             GAME_INFOR_AREA_X + GAME_INFOR_AREA_WIDTH,
             GAME_INFOR_AREA_Y + GAME_INFOR_LINE_HEIGHT * lineHeightCount);
 
+        // finally draw the timer at the bottom of the game information board.
         lineHeightCount += 2;
         drawText('Timer : ' + timer, TEXT_ALIGN_CENTER, '30px Calibri,Arial', BLUE_COLOR,
             GAME_INFOR_AREA_WIDTH / 2 + GAME_INFOR_AREA_X,
@@ -299,6 +307,14 @@ var Engine = (function(global) {
     global.ctx = ctx;
     global.canvas = canvas;
 
+    /**
+     * @description draw a line of on the specific location.
+     * @param {number} startX start of X coordinate
+     * @param {number} startY start of Y coordinate
+     * @param {number} endX   end of X coordinate
+     * @param {number} endY   end of Y coordinate
+     * @param {string} color  define the line's color.
+     */
     function drawSeperater(startX, startY, endX, endY, color) {
         ctx.save();
         ctx.fillStyle = color;
@@ -309,16 +325,36 @@ var Engine = (function(global) {
         ctx.restore();
     }
 
+    /**
+     * @description draw string on the specific location.
+     *
+     * @param {string} textToDraw a string that is going to be drawn on canvas.
+     * @param {string} textAlign a string that is defined the test align style.
+     * @param {string} fontFamily a string that is defined the font family.
+     * @param {string} color a string that defined the cole of text.
+     * @param {number} startX start of X coordinate to draw test
+     * @param {number} startY start of Y coordinate to draw test
+     */
     function drawText(textToDraw, textAlign, fontFamily, color, startX, startY) {
         ctx.save();
         ctx.fillStyle = color;
         ctx.textAlign = textAlign;
         ctx.font = fontFamily;
         ctx.fillText(textToDraw, startX, startY);
-
         ctx.restore();
     }
 
+    /**
+     * @description a wrapper function to call {@link drawText} twice to draw the score
+     *              with label.
+     *
+     * @param {string} textToDraw a string that is going to be drawn on canvas.
+     * @param {number} score a score that is going to be drawn on canvas after the label painted.
+     * @param {string} fontFamily a string that is defined the font family.
+     * @param {string} color a string that defined the cole of text.
+     * @param {number} startX start of X coordinate to draw test
+     * @param {number} startY start of Y coordinate to draw test
+     */
     function drawScore(textToDraw, score, fontFamily, color, startX, startY) {
         drawText(textToDraw, TEXT_ALIGN_RIGHT, fontFamily, color,
             startX, startY);
@@ -326,8 +362,12 @@ var Engine = (function(global) {
             startX, startY);
     }
 
+    /**
+     * @description draw the gray out overlay over the gameboard, it also paint the 'Game Over'
+     *              and other notification on the overlay.
+     */
     function drawGameOverOverlay() {
-        ctx.save()
+        ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0,0.5)";
         ctx.rect(0, GAME_INFOR_AREA_Y, MAP_BLOCK_WIDTH * MAP_COLS, GAME_INFOR_AREA_HEIGHT);
         ctx.fill();

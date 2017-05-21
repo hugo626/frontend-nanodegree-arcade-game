@@ -1,3 +1,4 @@
+//Defined the key codes which system will respond.
 var LEFT_KEY = 'left';
 var RIGHT_KEY = 'right';
 var UP_KEY = 'up';
@@ -12,14 +13,18 @@ var D_KEY = 'D';
 // could be drawn in the center of the map block.
 var MAP_CHARACTER_OFFSET = 30;
 //Map block's drawing size.
+//TODO: Need to find out how to access the Global constant.
 var MAP_BLOCK_WIDTH = 101;
 var MAP_BLOCK_HEIGHT = 83;
-var MAP_COLS = 6;
+var MAP_COLS = 7;
 var MAP_ROWS = 6;
 
+// Define the animation cycle time for items, so they can
+// bouncing.
 var ANIMATION_INTERVAL = 2;
+// Define the height of bouncing ball.
 var BOUNCING_HEIGHT = 20;
-
+// A map defined the score for each collectible items.
 var ITEM_SCORE_MAP = {
     key: 100,
     greenGem: 10,
@@ -35,20 +40,27 @@ var ITEM_SCORE_MAP = {
  *                               location which will describe the left upper corner of the hit box,
  *                               which should be relative to the image-self. It should have width and
  *                               height defined to describe the size of the hit box.
+ * @param {string} type the file name of the image file which is going to be used to draw on canvas.
+ * @param {string} soundUri the file name of the sound effect that is going to be triggered when it collid
+ *                          with player.
  */
 var CollidableObject = function(initialX, initialY, initialHitBox, type, soundUri) {
+    // use image's file name as the name of this object. So when player try to collect
+    // this object, it is able to add it up to correspond counter.
     this.name = type;
     // The image/sprite for our objects, this uses
     // a helper we've provided to easily load images
     this.sprite = 'images/' + this.name + '.png';
+    // initialise the current x and y.
     this.currentX = initialX;
     this.currentY = initialY;
     this.hitBox = initialHitBox;
-    this.soundEffect = new sound('sounds/' + soundUri + '.wav');
+    // create the collided sound effect to this object.
+    if(soundUri) this.soundEffect = new Sound('sounds/' + soundUri + '.wav');
 };
 
 /**
- * @description this function will return a hit box definition, the major different between the retun one
+ * @description this function will return a hit box definition, the major different between the return one
  *              with the hitbox in {@link CollidableObject} is: the return hitbox describee the hitbox in
  *              absoulate location in whole canvas but not relativly in its image. In other words, the x
  *              and y location in the returned hitbox is describing the location of hit box in whole canvas.
@@ -76,7 +88,7 @@ CollidableObject.prototype.isCollided = function(targetHitbox) {
         (targetHitbox.x + targetHitbox.width) < ownHitbox.x ||
         targetHitbox.y > (ownHitbox.y + ownHitbox.height) ||
         (targetHitbox.y + targetHitbox.height) < ownHitbox.y);
-    if (collided) this.soundEffect.play();
+    if (collided && this.soundEffect) this.soundEffect.play();
     return collided;
 };
 
@@ -107,14 +119,13 @@ var Enemy = function(assignedRow) {
         width: 85,
         height: 63
     };
+    // so far we only have more than one enemy in our system, so we just use same image and collid sound effect.
     CollidableObject.call(this, initialX, initialY, initialHitBox, 'enemy-bug', 'smb_bump');
 };
 
 Enemy.prototype = Object.create(CollidableObject.prototype);
 Enemy.prototype.constructor = Enemy;
 
-//
-// Parameter: dt, a time delta between ticks
 /**
  * @description Update the enemy's position, required method for game, {@link Engine} will
  *              call this method to update the object's location.
@@ -171,9 +182,12 @@ var Player = function(initialCol, initialRow) {
     // be moved.
     this.targetCol = initialCol;
     this.targetRow = initialRow;
+
+    // add Previous Col and Row for animiation purpose only.
     this.previousCol = initialCol;
     this.previousRow = initialRow;
 
+    // used to restore the counter for different collectable item.
     this.collectedItemCount = {
         key: 0,
         blueGem: 0,
@@ -185,12 +199,14 @@ var Player = function(initialCol, initialRow) {
     // To initialise the currentX and Y.
     var initialX = _convertColToX(this.initialCol);
     var initialY = _convertRowToY(this.initialRow);
+    //this hit box only for 'char-boy' only.
     var initialHitBox = {
         offsetX: 22.5,
         offsetY: 90,
         width: 55,
         height: 50
     };
+    // so far we only use char-boy image, and mariodie sound for is killed.
     CollidableObject.call(this, initialX, initialY, initialHitBox, 'char-boy', 'smb_mariodie');
 };
 
@@ -208,13 +224,19 @@ Player.prototype.update = function(dt) {
     var targetX = _convertColToX(this.targetCol);
     var targetY = _convertRowToY(this.targetRow);
     // update the current x and y to target x and y location with specific speed and time difference.
+    // we want to update the x or y specifice direction, so we will only update x, when user are trying
+    // to move horizontally.
     if (this.previousCol !== this.targetCol) {
         this.currentX = _moveToTargetLoc(this.currentX, targetX, this.speed, dt);
-
+        // below is the part of code to add character bouncing animation, when user is moving in
+        // horizontal direction.This may causing hitbox is missing triggered Bug, so beware this
+        // point.
         var leftDistance = _calculateDistance(this.currentX, targetX);
         var totalDistance = _calculateDistance(_convertColToX(this.previousCol), targetX);
         this.currentY = _calculateBouncingCoord((leftDistance / totalDistance), _convertRowToY(this.previousRow));
+        // TODO: I need to figure out a way to draw the animation in safe way.
     }
+    // Update y axis, when user are trying to move verrtically.
     if (this.previousRow !== this.targetRow) {
         this.currentY = _moveToTargetLoc(this.currentY, targetY, this.speed, dt);
     }
@@ -241,21 +263,30 @@ Player.prototype.isMoving = function() {
 /**
  * @description this method will handle user's key pressed input, and then update character's target
  *              colum and row, so that {@link engine} will call update method to make character move
- *              to target colum and row.
+ *              to target colum and row. If {@link engine} detect the player is killed, then it will
+ *              flag the {@code isGameOver} to true, {@link Player} would not response to any character
+ *              moveing input, expect the SPACE key is presse. When user pressed SPACE, then reset the
+ *              game.
  * @param {string} pressedKeyCode is the human readable string to describe which key user pressed.
  * @return nothing.
  */
 Player.prototype.handleInput = function(pressedKeyCode) {
-    // check if the character still in moving state. if character is still moving, then do not need
-    // to respond to user's new key pressed event.
+    // if game is over, and user pressed SAPCE key, then un-block the input, reset game, allow user
+    // to control the character again.
     if(isGameOver && pressedKeyCode === SPACE_KEY){
        isGameOver = false;
     }
+    // check if the character still in moving state. if character is still moving, then do not need
+    // to respond to user's new key pressed event.
     if (this.isMoving()||isGameOver) {
         return;
     }
+    // previous Col and Row is only used for character animation. store the current col and row, and
+    // then they will be used to calculate the bouncing animiation.
     this.previousCol = this.targetCol;
     this.previousRow = this.targetRow;
+
+    // let the game system is able to react to AWSD keys as well.
     switch (pressedKeyCode) {
         case LEFT_KEY:
         case A_KEY:
@@ -283,15 +314,21 @@ Player.prototype.handleInput = function(pressedKeyCode) {
 
 /**
  * @description this method will be called when player's character is detected to be collided
- *              with enemy. Currently, we will reset character back to initial location.
+ *              with enemy. We will reset character back to initial location, play the killed
+ *              sound effect, and clear the score as well.
  * @return nothing
  */
 Player.prototype.killed = function() {
-    this.soundEffect.play();
+    if(this.soundEffect) this.soundEffect.play();
     this.resetLocation();
     this.clearScore();
 };
 
+/**
+ * @description The reset the location to the initial col and row, reset the current X and Y to
+ *              initial col and row. Reset the previouse col and row to initial col and row.
+ * @return nothing.
+ */
 Player.prototype.resetLocation = function() {
     //reset the target col and row to initial col and row.
     this.targetCol = this.initialCol;
@@ -304,6 +341,10 @@ Player.prototype.resetLocation = function() {
     this.previousRow = this.targetRow;
 };
 
+/**
+ * @description this method will clear all score of a player, basicly clear the collected item count.
+ * @return nothing.
+ */
 Player.prototype.clearScore = function() {
     this.collectedItemCount = {
         key: 0,
@@ -313,7 +354,14 @@ Player.prototype.clearScore = function() {
     };
 };
 
+/**
+ * @description This method will take a object whcich should be an {@link Item}. It will have
+ *              a name attribute, it will indicate which counter should be accumulated.
+ * @param {Item} item an Item object would be collected.
+ * @return nothing.
+ */
 Player.prototype.collectItem = function(item) {
+    // check if the name attribute exist in this item object.
     if (item.hasOwnProperty('name')) {
         switch (item.name) {
             case 'Key':
@@ -334,15 +382,18 @@ Player.prototype.collectItem = function(item) {
     }
 };
 
+/**
+ * @description Calculate the total score based on this player's collected item counter. with
+ *              different kind of item, it will have different score.
+ * @return {number} return a number which is calcualted based on its collectedItemCount map.
+ */
 Player.prototype.getTotalScore = function() {
     var totalScore = 0;
-
     for (var itemCount in this.collectedItemCount) {
         if (this.collectedItemCount.hasOwnProperty(itemCount)) {
             totalScore += this.collectedItemCount[itemCount] * ITEM_SCORE_MAP[itemCount];
-        };
+        }
     }
-
     return totalScore;
 };
 
@@ -350,7 +401,8 @@ Player.prototype.getTotalScore = function() {
  * @description Define a function class for items, it will inherited from {@link CollidableObject}.
  * @param {number} initialCol initial colum of this item.
  * @param {number} initialRow initial row of this item.
- * @param {string} imgURI a path to a image to be drawn for this item.
+ * @param {string} type the file name of a image to be drawn for this item.
+ * @param {string} sound the file name of a audio file to be played when it was collected.
  */
 var Item = function(initialCol, initialRow, type, sound) {
     this.animationCycleTime = 0;
@@ -386,19 +438,26 @@ Item.prototype.render = function() {
  * @return nothing.
  */
 Item.prototype.update = function(dt) {
+    // counting the time of animation, which will be used to decide the frame of animation.
     this.animationCycleTime = _calculateAnimationCycleTime(dt, this.animationCycleTime);
     var ratio = this.animationCycleTime / ANIMATION_INTERVAL;
     this.currentY = _calculateBouncingCoord(ratio, this.initialY);
 };
 
+/**
+ * @description this method will refresh this item to another location. Basically, in this veriosn
+ *              item will be refreshed in same row on different colum.
+ * @return nothing.
+ */
 Item.prototype.refresh = function() {
-    var newCol = Math.floor(Math.random() * MAP_COLS);
+    var newCol = _randomNewColNum(MAP_COLS);
     this.currentX = _convertColToX(newCol);
 };
 
 /**
  * @description this method simply, calculate the target x for charcter based on
- *               its target colum number.
+ *              its target colum number.
+ *
  * @return {number} the correspond X location based on the target colum.
  */
 var _convertColToX = function(col) {
@@ -425,6 +484,8 @@ var _convertRowToY = function(row) {
  *                           it should be converted from target col or row, and should be discard when updated finished.
  * @param {number} speed the moving speed of the character, which will be used to move the character in canvas.
  * @param {number} dt is the system time difference between two times of update method called.
+ *
+ * @return {number} the next coordinate which will move from currentloc to targetloc with given speed and dt.
  */
 var _moveToTargetLoc = function(currentLoc, targetLoc, speed, dt) {
     var movement = (dt * speed);
@@ -439,8 +500,14 @@ var _moveToTargetLoc = function(currentLoc, targetLoc, speed, dt) {
     }
 };
 
-var _calculateDistance = function(start, end) {
-    return Math.abs(start - end);
+/**
+ * @description calculate the distance between two location coordinate.
+ * @param {number} startLoc one of the location coordinate
+ * @param {number} endLoc another one location coordinate
+ * @return {number} the absoulate distance between two location coordinate.
+ */
+var _calculateDistance = function(startLoc, endLoc) {
+    return Math.abs(startLoc - endLoc);
 };
 
 /**
@@ -467,43 +534,76 @@ var _moveUpperBoundary = function(colOrRow, upperColLimit) {
     return colOrRow < upperColLimit - 1 ? colOrRow + 1 : colOrRow;
 };
 
-var _calculateBouncingCoord = function(ratio, xOrY) {
-    return xOrY - Math.sin(ratio * Math.PI) * BOUNCING_HEIGHT;
+/**
+ * @description this method using sin() method to simulate item's bouncing animation. we use 0 to PI in
+ *              sin().
+ *
+ * @param {number} ratio will be applied to the Math.PI and then passed in sin().
+ * @param {number} y the basic y location, and then percent of the bouncing height will be applied to.
+ * @return {number} the animated Y coordinate after the bouncing animiation height was applied.
+ */
+var _calculateBouncingCoord = function(ratio, y) {
+    return y - Math.sin(ratio * Math.PI) * BOUNCING_HEIGHT;
 };
 
+/**
+ * @description accumulate the dt into the {@link animationCycleTime} , and then arounded by
+ *              {@link ANIMATION_INTERVAL}.
+ *
+ * @param {number} dt the time difference between two ticks.
+ * @param {number} animationCycleTime the {@link animationCycleTime} count which will accept
+ *                                    the time difference.
+ * @return {number} the new {@link animationCycleTime} after it accumulate the time difference.
+ */
 var _calculateAnimationCycleTime = function(dt, animationCycleTime) {
     return (animationCycleTime = (animationCycleTime + dt) % ANIMATION_INTERVAL);
 };
 
-var _randomStartCol = function(MAP_ROWS) {
-    return Math.floor(Math.random() * MAP_ROWS);
+/**
+ * @description just random a new colum number based on the passed in maximum number.
+ * @param {number} maxColNum the maximum colum number that allowed to random next clomum number.
+ * @return {number} the next new colum number.
+ */
+var _randomNewColNum = function(maxColNum) {
+    return Math.floor(Math.random() * maxColNum);
 };
 
-var sound = function (src) {
+/**
+ * @description This is a wrapper class whow will maitain a audio element for different music file.
+ *              It provide a play method to play the effect.
+ * @param {string} src a path to a audio file which will be used in this sound effect.
+ */
+var Sound = function (src) {
     this.sound = document.createElement("audio");
     this.sound.src = src;
     this.sound.setAttribute("preload", "auto");
     this.sound.setAttribute("controls", "none");
     this.sound.style.display = "none";
     document.body.appendChild(this.sound);
-    this.play = playSound(this.sound);
-}
+};
 
-var playSound = function (sound) {
-    return function() {
-        sound.play();
-    }
-}
+/**
+ * @description this method will play the maintained sound file. It will pause and reset the sound
+ *              and then play. This means, the sound could be played immediately it called, even the
+ *              previouse call hasn't been finished yet.
+ * @return nothing.
+ */
+Sound.prototype.play =function () {
+    this.sound.pause();
+    this.sound.currentTime = 0;
+    this.sound.play();
+};
+
 
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
 // Place the player object in a variable called player
 var allEnemies = [new Enemy(2), new Enemy(3), new Enemy(4), new Enemy(2), new Enemy(3), new Enemy(4)];
-var player = new Player(_randomStartCol(MAP_COLS), MAP_ROWS - 1);
-var key = new Item(_randomStartCol(MAP_COLS), 1, 'Key', 'smb_1-up');
-var items = [key, new Item(_randomStartCol(MAP_COLS), 2, 'Gem Blue', 'smb_coin'),
-    new Item(_randomStartCol(MAP_COLS), 3, 'Gem Green', 'smb_coin'),
-    new Item(_randomStartCol(MAP_COLS), 4, 'Gem Orange', 'smb_coin')
+var player = new Player(_randomNewColNum(MAP_COLS), MAP_ROWS - 1);
+var key = new Item(_randomNewColNum(MAP_COLS), 1, 'Key', 'smb_1-up');
+var items = [key, new Item(_randomNewColNum(MAP_COLS), 2, 'Gem Blue', 'smb_coin'),
+    new Item(_randomNewColNum(MAP_COLS), 3, 'Gem Green', 'smb_coin'),
+    new Item(_randomNewColNum(MAP_COLS), 4, 'Gem Orange', 'smb_coin')
 ];
 
 
