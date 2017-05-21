@@ -36,7 +36,7 @@ var ITEM_SCORE_MAP = {
  *              other object. Such as: enemies, player or maybe items.
  * @param {number} initialX the initial x location for this object to be drawn on canvas.
  * @param {number} initialY the initial x location for this object to be drawn on canvas.
- * @param {number} initialHitBox this defined the hit box for this object, it should have offset X and Y
+ * @param {object} initialHitBox this defined the hit box for this object, it should have offset X and Y
  *                               location which will describe the left upper corner of the hit box,
  *                               which should be relative to the image-self. It should have width and
  *                               height defined to describe the size of the hit box.
@@ -103,7 +103,7 @@ var Enemy = function(assignedRow) {
     // the row that this enemy occupied.
     this.row = assignedRow;
     this.minSpeed = 30;
-    this.randomUpper = 80;
+    this.randomUpper = 100;
 
     this.randomSpeed();
 
@@ -173,7 +173,7 @@ Enemy.prototype.render = function() {
  */
 var Player = function(initialCol, initialRow) {
     // the moving speed of an character.
-    this.speed = 250;
+    this.speed = 300;
     // record the intial col and row for reset the player purpose.
     this.initialCol = initialCol;
     this.initialRow = initialRow;
