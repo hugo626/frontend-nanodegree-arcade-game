@@ -14,10 +14,10 @@ Open ```index.html``` in an latest version browser, such as Firefox, Chrome. You
 
 |Item Name|Score|Effect|
 |---------|-----|------|
-|Key|100|When key is collected, the character will be reseted back to bottom row, and Key-self will be refreshed in same row, but with random Colum|
-|Green Gem|10|Gem-self will be refreshed in same row, but with random Colum|
-|Blue Gem|80|Gem-self will be refreshed in same row, but with random Colum|
-|Orange Gem|1|Gem-self will be refreshed in same row, but with random Colum|
+|Key|100|When key is collected, the character will be reseted back to bottom row, and Key-self will be refreshed in same row, but with random Colum.|
+|Green Gem|10|Gem-self will be refreshed in same row, but with random Colum.|
+|Blue Gem|80|Gem-self will be refreshed in same row, but with random Colum.|
+|Orange Gem|1|Gem-self will be refreshed in same row, but with random Colum.|
 
 ## 3. License
 This Arcade Game is Copyright (c) 2017 Yuguo LI. It is free software, and may be redistributed under the terms specified in the [LICENSE](LICENSE) file.
