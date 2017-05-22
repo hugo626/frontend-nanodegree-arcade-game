@@ -291,7 +291,8 @@ describe('In App.js, an item instance', function() {
     var item = new Item(1, 2, itemFileName, soundFileName);
     expect(item.currentX).toBe(_convertColToX(1));
     item.refresh();
-    expect(item.currentX).not.toBe(_convertColToX(1));
+    expect(item.currentX).not.toBeGreaterThan(_convertColToX(MAP_COLS-1));
+    expect(item.currentX).not.toBeLessThan(_convertColToX(0));
     expect(item.currentY).toBe(_convertRowToY(2));
   });
 });
